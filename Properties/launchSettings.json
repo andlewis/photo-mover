@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "photo-mover": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Users\\Andrew\\Pictures\\geneva\" \"c:\\temp\""
+    }
+  }
+}
