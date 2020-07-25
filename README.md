@@ -1,6 +1,6 @@
 # photo-mover
 Moves photos from a folder to another based on date stored in EXIF
-
+<pre>
 photo-mover:
   Photo Mover
 
@@ -14,3 +14,4 @@ Options:
   --overwrite          Overwrite Files? [default: True]
   --version            Show version information
   -?, -h, --help       Show help and usage information
+</pre>
