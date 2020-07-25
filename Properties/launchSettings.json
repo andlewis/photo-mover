@@ -2,7 +2,7 @@
   "profiles": {
     "photo-mover": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\Andrew\\Pictures\\geneva\" \"c:\\temp\""
+      "commandLineArgs": "--source \"C:\\Users\\Andrew\\Pictures\\geneva\" --dest \"c:\\temp\""
     }
   }
 }
