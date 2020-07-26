@@ -1,7 +1,10 @@
 ﻿using ExifLib;
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Linq;
 
 namespace photo_mover
 {
@@ -9,7 +12,7 @@ namespace photo_mover
     {
         static int Main(string[] args)
         {
-            if(args==null || args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            if (args == null || args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             {
                 args = new string[] { "--help" };
             }
@@ -45,7 +48,7 @@ namespace photo_mover
             // Parse the incoming args and invoke the handler
             return rootCommand.InvokeAsync(args).Result;
 
-          
+
         }
 
         static void MoveIt(string sourceFolder, string destinationFolder, bool copyOnly = false, bool overwrite = true)
@@ -75,39 +78,47 @@ namespace photo_mover
             var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", System.IO.SearchOption.AllDirectories);
             foreach (var path in files)
             {
-                using (var reader = new ExifReader(path))
+                var rawDate = GetDate(path);
+                if (rawDate != null)
                 {
-                    if (reader.GetTagValue<DateTime>(ExifTags.DateTimeDigitized, out var date))
+                    var date = rawDate.Value;
+                    var file = new System.IO.FileInfo(path);
+                    var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}", $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}_{date.Day.ToString("D2")}");
+
+                    if (!System.IO.Directory.Exists(newPath))
+                        System.IO.Directory.CreateDirectory(newPath);
+
+                    var movePath = System.IO.Path.Combine(newPath, file.Name);
+                    if (copyOnly)
                     {
-                        reader.Dispose();
-
-                        var file = new System.IO.FileInfo(path);
-                        var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}", $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}_{date.Day.ToString("D2")}");
-
-                        if (!System.IO.Directory.Exists(newPath))
-                            System.IO.Directory.CreateDirectory(newPath);
-
-                        var movePath = System.IO.Path.Combine(newPath, file.Name);
-                        if (copyOnly)
-                        {
-                            System.IO.File.Copy(path, movePath, overwrite);
-                        }
-                        else
-                        {
-                            System.IO.File.Move(path, movePath, overwrite);
-                        }
-                        moveCount++;
-                        Console.WriteLine($"Moved: {date} - {path} to {movePath}");
+                        System.IO.File.Copy(path, movePath, overwrite);
                     }
                     else
                     {
-                        stayCount++;
-                        Console.WriteLine($"EXIF Date Not Found: {path}");
+                        System.IO.File.Move(path, movePath, overwrite);
                     }
+                    moveCount++;
+                    Console.WriteLine($"Moved: {date} - {path} to {movePath}");
+                }
+                else
+                {
+                    stayCount++;
+                    Console.WriteLine($"EXIF Date Not Found: {path}");
                 }
             }
 
             Console.WriteLine($"Complete. Moved: {moveCount}. Not Moved: {stayCount}");
+        }
+
+        private static DateTime? GetDate(string path)
+        {
+            var directories = ImageMetadataReader.ReadMetadata(path);
+            var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+            var dateTime = subIfdDirectory?.GetDescription(ExifDirectoryBase.TagDateTime);
+            if (DateTime.TryParse(dateTime, out var date))
+                return date;
+            else
+                return null;
         }
     }
 }
