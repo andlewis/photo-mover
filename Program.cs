@@ -1,5 +1,4 @@
-﻿using ExifLib;
-using MetadataExtractor;
+﻿using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using System;
 using System.CommandLine;
