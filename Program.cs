@@ -44,9 +44,9 @@ namespace photo_mover
             rootCommand.Description = "Photo Mover";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            rootCommand.Handler = CommandHandler.Create<string, string, bool, bool, bool>((source, dest, copy, overwrite, subFolders) =>
+            rootCommand.Handler = CommandHandler.Create<string, string, bool, bool, bool>((source, dest, copy, overwrite, includeSubfolders) =>
             {
-                MoveIt(source, dest, copy, overwrite, subFolders);
+                MoveIt(source, dest, copy, overwrite, includeSubfolders);
             });
 
             // Parse the incoming args and invoke the handler
@@ -55,7 +55,7 @@ namespace photo_mover
 
         }
 
-        static void MoveIt(string sourceFolder, string destinationFolder, bool copyOnly = false, bool overwrite = true, bool subFolders = true)
+        static void MoveIt(string sourceFolder, string destinationFolder, bool copyOnly = false, bool overwrite = true, bool includeSubfolders = true)
         {
             var exit = false;
 
@@ -79,7 +79,7 @@ namespace photo_mover
 
             var moveCount = 0;
             var stayCount = 0;
-            var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", subFolders ? System.IO.SearchOption.AllDirectories : System.IO.SearchOption.TopDirectoryOnly);
+            var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", includeSubfolders ? System.IO.SearchOption.AllDirectories : System.IO.SearchOption.TopDirectoryOnly);
             var validExtensions = new string[] { ".jpg", ".heic", ".mov", ".mp4", ".png" };
             foreach (var path in files)
             {
@@ -90,7 +90,7 @@ namespace photo_mover
                     {
                         var date = rawDate.Value;
                         var file = new System.IO.FileInfo(path);
-                        var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}", $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}_{date.Day.ToString("D2")}");
+                        var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year:D4}_{date.Month:D2}", $"{date.Year:D4}_{date.Month:D2}_{date.Day:D2}");
 
                         if (!System.IO.Directory.Exists(newPath))
                             System.IO.Directory.CreateDirectory(newPath);
@@ -147,7 +147,7 @@ namespace photo_mover
 
                 }
                 else if (new System.IO.FileInfo(path).Name.Length > 18
-                        && DateTime.TryParseExact(new System.IO.FileInfo(path).Name.Substring(0, 19), new string[] { "yyyyMMdd_HHmmssfff_","yyyy-MM-dd HH.mm.ss" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date3))
+                        && DateTime.TryParseExact(new System.IO.FileInfo(path).Name.Substring(0, 19), new string[] { "yyyyMMdd_HHmmssfff_", "yyyy-MM-dd HH.mm.ss" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date3))
                 {
                     return date3;
                 }
