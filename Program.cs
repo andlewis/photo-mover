@@ -33,15 +33,20 @@ namespace photo_mover
                     "--overwrite",
                     getDefaultValue: ()=>true,
                     "Overwrite Files?"
+                    ),
+                new Option<bool>(
+                    "--includeSubfolders",
+                    getDefaultValue: ()=>true,
+                    "Include Subfolders?"
                     )
             };
 
             rootCommand.Description = "Photo Mover";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            rootCommand.Handler = CommandHandler.Create<string, string, bool, bool>((source, dest, copy, overwrite) =>
+            rootCommand.Handler = CommandHandler.Create<string, string, bool, bool, bool>((source, dest, copy, overwrite, subFolders) =>
             {
-                MoveIt(source, dest, copy, overwrite);
+                MoveIt(source, dest, copy, overwrite, subFolders);
             });
 
             // Parse the incoming args and invoke the handler
@@ -50,7 +55,7 @@ namespace photo_mover
 
         }
 
-        static void MoveIt(string sourceFolder, string destinationFolder, bool copyOnly = false, bool overwrite = true)
+        static void MoveIt(string sourceFolder, string destinationFolder, bool copyOnly = false, bool overwrite = true, bool subFolders = true)
         {
             var exit = false;
 
@@ -74,35 +79,43 @@ namespace photo_mover
 
             var moveCount = 0;
             var stayCount = 0;
-            var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", System.IO.SearchOption.AllDirectories);
+            var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", subFolders ? System.IO.SearchOption.AllDirectories : System.IO.SearchOption.TopDirectoryOnly);
+            var validExtensions = new string[] { ".jpg", ".heic", ".mov", ".mp4", ".png" };
             foreach (var path in files)
             {
-                var rawDate = GetDate(path);
-                if (rawDate != null)
+                if (validExtensions.Any(m => m == new System.IO.FileInfo(path).Extension.ToLower()))
                 {
-                    var date = rawDate.Value;
-                    var file = new System.IO.FileInfo(path);
-                    var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}", $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}_{date.Day.ToString("D2")}");
-
-                    if (!System.IO.Directory.Exists(newPath))
-                        System.IO.Directory.CreateDirectory(newPath);
-
-                    var movePath = System.IO.Path.Combine(newPath, file.Name);
-                    if (copyOnly)
+                    var rawDate = GetDate(path);
+                    if (rawDate != null)
                     {
-                        System.IO.File.Copy(path, movePath, overwrite);
+                        var date = rawDate.Value;
+                        var file = new System.IO.FileInfo(path);
+                        var newPath = System.IO.Path.Combine(destinationFolder, date.Year.ToString("D4"), $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}", $"{date.Year.ToString("D4")}_{date.Month.ToString("D2")}_{date.Day.ToString("D2")}");
+
+                        if (!System.IO.Directory.Exists(newPath))
+                            System.IO.Directory.CreateDirectory(newPath);
+
+                        var movePath = System.IO.Path.Combine(newPath, file.Name);
+                        if (copyOnly)
+                        {
+                            System.IO.File.Copy(path, movePath, overwrite);
+                        }
+                        else
+                        {
+                            System.IO.File.Move(path, movePath, overwrite);
+                        }
+                        moveCount++;
+                        Console.WriteLine($"Moved: {date} - {path} to {movePath}");
                     }
                     else
                     {
-                        System.IO.File.Move(path, movePath, overwrite);
+                        stayCount++;
+                        Console.WriteLine($"EXIF Date Not Found: {path}");
                     }
-                    moveCount++;
-                    Console.WriteLine($"Moved: {date} - {path} to {movePath}");
                 }
                 else
                 {
-                    stayCount++;
-                    Console.WriteLine($"EXIF Date Not Found: {path}");
+                    Console.WriteLine($"Invalid extension ({new System.IO.FileInfo(path).Extension}): {path}");
                 }
             }
 
@@ -112,12 +125,40 @@ namespace photo_mover
         private static DateTime? GetDate(string path)
         {
             var directories = ImageMetadataReader.ReadMetadata(path);
-            var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-            var dateTime = subIfdDirectory?.GetDescription(ExifDirectoryBase.TagDateTime);
-            if (DateTime.TryParse(dateTime, out var date))
-                return date;
-            else
-                return null;
+            string dateTime;
+            foreach (var dir in directories)
+            {
+                dateTime = dir?.GetDescription(ExifDirectoryBase.TagDateTime)
+                    ?? dir.GetDescription(ExifDirectoryBase.TagDateTimeOriginal)
+                    ?? dir.Tags.FirstOrDefault(m => m.Name == "Created")?.Description;
+
+
+                if (!string.IsNullOrWhiteSpace(dateTime))
+                {
+                    if (DateTime.TryParse(dateTime, out var date))
+                    {
+                        return date;
+                    }
+                    else if (DateTime.TryParseExact(dateTime, new string[] { "ddd. MMM. dd HH:mm:ss yyyy", "yyyy:MM:dd HH:mm:ss" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date2))
+                    {
+                        return date2;
+                    }
+
+
+                }
+                else if (new System.IO.FileInfo(path).Name.Length > 18
+                        && DateTime.TryParseExact(new System.IO.FileInfo(path).Name.Substring(0, 19), new string[] { "yyyyMMdd_HHmmssfff_","yyyy-MM-dd HH.mm.ss" }, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date3))
+                {
+                    return date3;
+                }
+            }
+
+            return null;
+
+
+            //var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault() ?? directories.OfType<Exif>().FirstOrDefault();
+            //            var dateTime = subIfdDirectory?.GetDescription(ExifDirectoryBase.TagDateTimeOriginal);
+
         }
     }
 }

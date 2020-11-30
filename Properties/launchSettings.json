@@ -2,7 +2,7 @@
   "profiles": {
     "photo-mover": {
       "commandName": "Project",
-      "commandLineArgs": "--source \"C:\\Users\\Andrew\\Pictures\\geneva\" --dest \"c:\\temp\""
+      "commandLineArgs": "--source \"D:\\OneDrive\\Andrew\\Camera Uploads - Andrew\" --dest \"D:\\OneDrive\\Pictures\""
     }
   }
 }
