@@ -29,7 +29,7 @@ public static class Utils
         var files = System.IO.Directory.GetFiles(sourceFolder, "*.*", includeSubfolders
             ? System.IO.SearchOption.AllDirectories
             : System.IO.SearchOption.TopDirectoryOnly);
-        var validExtensions = new string[] { ".jpg", ".heic", ".mov", ".mp4", ".png" };
+        var validExtensions = new string[] { ".jpg", ".heic", ".mov", ".mp4", ".png", ".gif", ".webp" };
         foreach (var path in files)
         {
             if (validExtensions.Any(m => m == new System.IO.FileInfo(path).Extension.ToLower()))
